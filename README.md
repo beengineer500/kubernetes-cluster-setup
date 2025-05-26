@@ -10,4 +10,7 @@
 <br>
 
 ## Cluster info
-* ~ ing
+  * Control Plane (Master Node) : 1
+  * Data Plane (Worker Node) : 2
+<br>
+<br>
