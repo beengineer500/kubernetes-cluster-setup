@@ -7,6 +7,7 @@
 * Memory : 32GB
 * Disk : 약 450GB
 * Hypervisor : Virtual Box
+* OS : Rocky Linux 8.4
 <br>
 
 ## Cluster info
