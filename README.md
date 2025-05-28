@@ -16,7 +16,7 @@
 <br>
 
 ## Log
-* [2025-5-27] ~
+### [2025-5-27] ~
   1. Hypervisor 설치 (VMware EXSi, VirtualBox)
   2. VM 생성/설정 & OS 설치
   3. OS 설정
