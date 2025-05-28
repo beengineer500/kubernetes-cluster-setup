@@ -11,7 +11,14 @@
 <br>
 
 ## Cluster info
-  * Control Plane (Master Node) : 1
-  * Data Plane (Worker Node) : 2
+* Control Plane (Master Node) : 1
+* Data Plane (Worker Node) : 2
+<br>
+
+## Log
+* [2025-5-27] ~
+  1. Hypervisor 설치 (VMware EXSi, VirtualBox)
+  2. VM 생성/설정 & OS 설치
+  3. OS 설정
 <br>
 <br>
