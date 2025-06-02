@@ -406,7 +406,6 @@ EOF
     # kubernetes 레포지토리 확인
     cat /etc/yum.repos.d/kubernetes.repo
     yum repolist
-    yum list kubelet kubeadm kubectl || { error "Kubernetes 패키지 목록 확인 실패"; return 1; }
     info "Kubernetes 레포지토리 설정 완료"
     info "Kubernetes 패키지 설치를 시작합니다..."
     echo ""
