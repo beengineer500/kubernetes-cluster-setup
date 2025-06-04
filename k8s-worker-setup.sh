@@ -66,6 +66,10 @@ check_system_info() {
     # OS 정보
     info "OS 정보:"
     cat /etc/os-release | grep -E "^(NAME|VERSION)" | sed 's/^/  /'
+
+    # Kernel 정보
+    info "Kernel 정보"
+    uname -r 
     
     # 하드웨어 정보
     info "하드웨어 정보:"
