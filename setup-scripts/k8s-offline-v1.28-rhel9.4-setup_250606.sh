@@ -4,7 +4,7 @@
 # Kubernetes Worker Node Setup Script
 # Description: 폐쇄망에서 쿠버네티스 노드 환경을 자동으로 구성하는 스크립트
 # Author: Beengineer
-# Version: 1.0
+# Version: 2.0
 #==============================================================================
 
 # 색상 정의
@@ -15,8 +15,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 상태 파일 경로
-STATE_FILE="/var/log/k8s-worker-setup.state"
-LOG_FILE="/var/log/k8s-worker-setup.log"
+STATE_FILE="/var/log/k8s-offline-node-setup.state"
+LOG_FILE="/var/log/k8s-offline-node-setup.log"
 
 # 로그 함수
 log() {
@@ -494,7 +494,7 @@ main() {
     
     # 시작할 단계 선택
     if [ "$current_step" -eq 0 ]; then
-        read -p "시작할 단계를 선택하세요 (1-12) [1]: " start_step_num
+        read -p "시작할 단계를 선택하세요 (1-13) [1]: " start_step_num
         start_step_num=${start_step_num:-1}
         current_step=$((start_step_num - 1))
     fi
