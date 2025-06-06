@@ -3,7 +3,7 @@
 #==============================================================================
 # Kubernetes Worker Node Setup Script
 # Description: 쿠버네티스 워커 노드 환경을 자동으로 구성하는 스크립트
-# Author: DevOps Engineer
+# Author: Beengineer
 # Version: 1.0
 #==============================================================================
 
@@ -233,14 +233,19 @@ step4_network_dns() {
 step5_time_sync() {
     start_step "시간 동기화 확인"
     
-    # chronyd 상태 확인
-    systemctl status chronyd --no-pager
-    
-    if ! systemctl is-active chronyd >/dev/null 2>&1; then
-        warning "chronyd가 실행 중이 아닙니다. 시작합니다."
-        systemctl start chronyd
-        systemctl enable chronyd
+    # chronyd 설치 확인
+    if ! rpm -q chrony > /dev/null 2>&1: then
+        info 'chrony 패키지가 설치되어 있지 않습니다. 설치를 시작합니다...'
+        dnf install -y chrony || { error "chrony 설치 실패"; return 1; }
+    else
+        info 'chrony 패키지가 이미 설치되어 있습니다.'
     fi
+    
+    # chronyd 서비스 시작 및 활성화
+    systemctl start chronyd || { error "chronyd 시작 실패"; return 1; }
+    systemctl enable chronyd || { error "chronyd 활성화 실패"; return 1; }
+    info "chronyd 서비스 상태:"
+    systemctl is-active chronyd || { error "chronyd 서비스가 활성화되지 않았습니다"; return 1; }
     
     # 동기화 상태 확인
     info "시간 동기화 상태:"

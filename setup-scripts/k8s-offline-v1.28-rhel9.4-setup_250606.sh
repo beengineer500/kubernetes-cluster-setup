@@ -2,7 +2,7 @@
 
 #==============================================================================
 # Kubernetes Worker Node Setup Script
-# Description: 쿠버네티스 워커 노드 환경을 자동으로 구성하는 스크립트
+# Description: 폐쇄망에서 쿠버네티스 노드 환경을 자동으로 구성하는 스크립트
 # Author: Beengineer
 # Version: 1.0
 #==============================================================================
@@ -95,14 +95,14 @@ show_menu() {
     info "========== 작업 단계 목차 =========="
     echo "1. ISO 마운트 및 로컬 레포지토리 설정"
     echo "2. 방화벽 비활성화 및 SELinux 설정"
-    echo "3. 호스트명 및 hosts 파일 설정"
-    echo "4. 네트워크 DNS 설정"
-    echo "5. 시간 동기화 확인"
-    echo "6. Swap 비활성화"
-    echo "7. 기존 컨테이너 런타임 제거"
-    echo "8. Docker 및 Containerd 설치"
-    echo "9. Containerd 설정"
-    echo "10. 커널 모듈 및 sysctl 설정"
+    echo "3. 커널 모듈 및 sysctl 설정"
+    echo "4. 호스트명 및 hosts 파일 설정"
+    echo "5. 네트워크 DNS 설정"
+    echo "6. 시간 동기화 확인"
+    echo "7. Swap 비활성화"
+    echo "8. 기존 컨테이너 런타임 제거"
+    echo "9. Docker 및 Containerd 설치"
+    echo "10. Containerd 설정"
     echo "11. Kubernetes 패키지 설치"
     echo "12. 최종 확인 및 완료"
     info "===================================="
@@ -183,187 +183,8 @@ step2_firewall_selinux() {
     return 0
 }
 
-# Step 3: 호스트명 및 hosts 설정
-step3_hostname_hosts() {
-    start_step "호스트명 및 hosts 파일 설정"
-    
-    # 호스트명 설정 (워커 노드)
-    read -p "워커 노드 호스트명을 입력하세요 [k8s-master01]: " hostname
-    hostname=${hostname:-k8s-master01}
-    
-    hostnamectl set-hostname "${hostname}" || { error "호스트명 설정 실패"; return 1; }
-    
-    # hosts 파일 설정
-    # 기존 항목 확인 후 추가
-    grep -q "k8s-master01" /etc/hosts || echo "192.168.35.70 k8s-master01" >> /etc/hosts
-    grep -q "k8s-worker01" /etc/hosts || echo "192.168.35.75 k8s-worker01" >> /etc/hosts
-    
-    info "hosts 파일 내용:"
-    cat /etc/hosts | grep -E "(k8s-master|k8s-worker)"
-    
-    complete_step 3 "호스트명 및 hosts 파일 설정"
-    return 0
-}
-
-# Step 4: 네트워크 DNS 설정
-step4_network_dns() {
-    start_step "네트워크 DNS 설정"
-    
-    # 활성 연결 확인
-    info "현재 네트워크 연결:"
-    nmcli con show
-    
-    # 활성 연결 이름 가져오기
-    CON_NAME=$(nmcli -t -f NAME,DEVICE con show --active | grep -v lo | head -1 | cut -d: -f1)
-    
-    if [ -z "$CON_NAME" ]; then
-        error "활성 네트워크 연결을 찾을 수 없습니다"
-        return 1
-    fi
-    
-    info "DNS를 8.8.8.8로 설정합니다 (연결: $CON_NAME)"
-    nmcli con mod "$CON_NAME" ipv4.dns 8.8.8.8 || { error "DNS 설정 실패"; return 1; }
-    nmcli con up "$CON_NAME" || { error "네트워크 연결 재시작 실패"; return 1; }
-    
-    complete_step 4 "네트워크 DNS 설정"
-    return 0
-}
-
-# Step 5: 시간 동기화 확인
-step5_time_sync() {
-    start_step "시간 동기화 확인"
-    
-    # chronyd 설치 확인
-    if ! rpm -q chrony > /dev/null 2>&1: then
-        info 'chrony 패키지가 설치되어 있지 않습니다. 설치를 시작합니다...'
-        dnf install -y chrony || { error "chrony 설치 실패"; return 1; }
-    else
-        info 'chrony 패키지가 이미 설치되어 있습니다.'
-    fi
-    
-    # chronyd 서비스 시작 및 활성화
-    systemctl start chronyd || { error "chronyd 시작 실패"; return 1; }
-    systemctl enable chronyd || { error "chronyd 활성화 실패"; return 1; }
-    info "chronyd 서비스 상태:"
-    systemctl is-active chronyd || { error "chronyd 서비스가 활성화되지 않았습니다"; return 1; }
-    
-    # 동기화 상태 확인
-    info "시간 동기화 상태:"
-    chronyc tracking | grep -E "(Reference ID|System time|NTP)"
-    
-    complete_step 5 "시간 동기화 확인"
-    return 0
-}
-
-# Step 6: Swap 비활성화
-step6_disable_swap() {
-    start_step "Swap 비활성화"
-    
-    # 현재 swap 비활성화
-    swapoff -a
-    
-    # swap 상태 확인
-    if swapon --show | grep -q .; then
-        error "Swap 비활성화 실패"
-        return 1
-    fi
-    
-    # fstab에서 swap 항목 주석 처리
-    sed -i '/swap/s/^/#/' /etc/fstab
-    
-    info "Swap 설정 확인:"
-    grep swap /etc/fstab || info "fstab에 swap 항목이 없습니다"
-    
-    complete_step 6 "Swap 비활성화"
-    return 0
-}
-
-# Step 7: 기존 컨테이너 런타임 제거
-step7_remove_old_runtime() {
-    start_step "기존 컨테이너 런타임 제거"
-    
-    # 제거할 패키지 목록
-    REMOVE_PKGS="docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine podman runc"
-    
-    for pkg in $REMOVE_PKGS; do
-        if rpm -q $pkg >/dev/null 2>&1; then
-            info "$pkg 제거 중..."
-            dnf remove -y $pkg
-        fi
-    done
-    
-    complete_step 7 "기존 컨테이너 런타임 제거"
-    return 0
-}
-
-# Step 8: Docker 및 Containerd 설치
-step8_install_docker() {
-    start_step "Docker 및 Containerd 설치"
-    
-    # Docker 패키지 다운로드
-    info "Docker 패키지 다운로드 중..."
-    
-    DOCKER_PKGS=(
-        "https://download.docker.com/linux/rhel/8/x86_64/stable/Packages/containerd.io-1.7.27-3.1.el8.x86_64.rpm"
-        "https://download.docker.com/linux/rhel/8/x86_64/stable/Packages/docker-buildx-plugin-0.23.0-1.el8.x86_64.rpm"
-        "https://download.docker.com/linux/rhel/8/x86_64/stable/Packages/docker-ce-28.1.1-1.el8.x86_64.rpm"
-        "https://download.docker.com/linux/rhel/8/x86_64/stable/Packages/docker-ce-cli-28.1.1-1.el8.x86_64.rpm"
-        "https://download.docker.com/linux/rhel/8/x86_64/stable/Packages/docker-ce-rootless-extras-28.1.1-1.el8.x86_64.rpm"
-        "https://download.docker.com/linux/rhel/8/x86_64/stable/Packages/docker-compose-plugin-2.35.1-1.el8.x86_64.rpm"
-    )
-    
-    for url in "${DOCKER_PKGS[@]}"; do
-        filename=$(basename "$url")
-        if [ ! -f "$filename" ]; then
-            curl -fsSLO "$url" || { error "다운로드 실패: $url"; return 1; }
-        else
-            info "$filename 이미 존재함"
-        fi
-    done
-    
-    # 패키지 설치
-    info "Docker 패키지 설치 중..."
-    dnf install -y ./*.rpm || { error "Docker 설치 실패"; return 1; }
-    
-    # Docker 서비스 시작 및 활성화
-    systemctl start docker
-    systemctl enable docker
-    
-    # Containerd 서비스 시작 및 활성화
-    systemctl start containerd
-    systemctl enable containerd
-    
-    # 서비스 상태 확인
-    info "서비스 상태 확인:"
-    systemctl is-enabled docker containerd
-    
-    complete_step 8 "Docker 및 Containerd 설치"
-    return 0
-}
-
-# Step 9: Containerd 설정
-step9_configure_containerd() {
-    start_step "Containerd 설정"
-    
-    # Containerd 기본 설정 생성
-    containerd config default | tee /etc/containerd/config.toml || { error "Containerd 설정 생성 실패"; return 1; }
-    
-    # SystemdCgroup 활성화
-    sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
-    
-    # 설정 확인
-    info "SystemdCgroup 설정 확인:"
-    grep 'SystemdCgroup' /etc/containerd/config.toml
-    
-    # Containerd 재시작
-    systemctl restart containerd || { error "Containerd 재시작 실패"; return 1; }
-    
-    complete_step 9 "Containerd 설정"
-    return 0
-}
-
-# Step 10: 커널 모듈 및 sysctl 설정
-step10_kernel_settings() {
+# Step 3: 커널 모듈 및 sysctl 설정
+step3_kernel_settings() {
     start_step "커널 모듈 및 sysctl 설정"
     
     # 필요한 커널 모듈 로드
@@ -389,43 +210,197 @@ EOF
     info "커널 모듈 확인:"
     lsmod | grep -E "overlay|br_netfilter"
     
-    complete_step 10 "커널 모듈 및 sysctl 설정"
+    complete_step 3 "커널 모듈 및 sysctl 설정"
     return 0
 }
 
-# Step 11: Kubernetes 패키지 설치
-step11_install_kubernetes() {
-    start_step "Kubernetes 패키지 설치"
+# Step 4: 호스트명 및 hosts 설정
+step4_hostname_hosts() {
+    start_step "호스트명 및 hosts 파일 설정"
     
-    # Kubernetes 레포지토리 추가
-    cat <<EOF | tee /etc/yum.repos.d/kubernetes.repo
-[kubernetes]
-name=Kubernetes
-baseurl=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/
-enabled=1
-gpgcheck=1
-gpgkey=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
-exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
-EOF
+    # 호스트명 설정 (워커 노드)
+    read -p "워커 노드 호스트명을 입력하세요 [k8s-worker01]: " hostname
+    hostname=${hostname:-k8s-worker01}
+    
+    hostnamectl set-hostname "${hostname}" || { error "호스트명 설정 실패"; return 1; }
+    
+    # hosts 파일 설정
+    # 기존 항목 확인 후 추가
+    grep -q "k8s-master01" /etc/hosts || echo "192.168.35.70 k8s-master01" >> /etc/hosts
+    grep -q "k8s-worker01" /etc/hosts || echo "192.168.35.75 k8s-worker01" >> /etc/hosts
+    
+    info "hosts 파일 내용:"
+    cat /etc/hosts | grep -E "(k8s-master|k8s-worker)"
+    
+    complete_step 4 "호스트명 및 hosts 파일 설정"
+    return 0
+}
 
-    # kubernetes 레포지토리 확인
-    cat /etc/yum.repos.d/kubernetes.repo
-    yum repolist
-    info "Kubernetes 레포지토리 설정 완료"
-    info "Kubernetes 패키지 설치를 시작합니다..."
-    echo ""
+# Step 5: 네트워크 DNS 설정
+step5_network_dns() {
+    start_step "네트워크 DNS 설정"
+    
+    # 활성 연결 확인
+    info "현재 네트워크 연결:"
+    nmcli con show
+    
+    # 활성 연결 이름 가져오기
+    CON_NAME=$(nmcli -t -f NAME,DEVICE con show --active | grep -v lo | head -1 | cut -d: -f1)
+    
+    if [ -z "$CON_NAME" ]; then
+        error "활성 네트워크 연결을 찾을 수 없습니다"
+        return 1
+    fi
+    
+    info "DNS를 8.8.8.8로 설정합니다 (연결: $CON_NAME)"
+    nmcli con mod "$CON_NAME" ipv4.dns 8.8.8.8 || { error "DNS 설정 실패"; return 1; }
+    nmcli con up "$CON_NAME" || { error "네트워크 연결 재시작 실패"; return 1; }
+    
+    complete_step 5 "네트워크 DNS 설정"
+    return 0
+}
 
+# Step 6: 시간 동기화 확인
+step6_time_sync() {
+    start_step "시간 동기화 확인"
+    
+    # chronyd 설치 확인
+    if ! rpm -q chrony > /dev/null 2>&1: then
+        info 'chrony 패키지가 설치되어 있지 않습니다. 설치를 시작합니다...'
+        dnf install -y chrony || { error "chrony 설치 실패"; return 1; }
+    else
+        info 'chrony 패키지가 이미 설치되어 있습니다.'
+    fi
+    
+    # chronyd 서비스 시작 및 활성화
+    systemctl start chronyd || { error "chronyd 시작 실패"; return 1; }
+    systemctl enable chronyd || { error "chronyd 활성화 실패"; return 1; }
+    info "chronyd 서비스 상태:"
+    systemctl is-active chronyd || { error "chronyd 서비스가 활성화되지 않았습니다"; return 1; }
+    
+    # 동기화 상태 확인
+    info "시간 동기화 상태:"
+    chronyc tracking | grep -E "(Reference ID|System time|NTP)"
+    
+    complete_step 6 "시간 동기화 확인"
+    return 0
+}
+
+# Step 7: Swap 비활성화
+step7_disable_swap() {
+    start_step "Swap 비활성화"
+    
+    # 현재 swap 비활성화
+    swapoff -a
+    
+    # swap 상태 확인
+    if swapon --show | grep -q .; then
+        error "Swap 비활성화 실패"
+        return 1
+    fi
+    
+    # fstab에서 swap 항목 주석 처리
+    sed -i '/swap/s/^/#/' /etc/fstab
+    
+    info "Swap 설정 확인:"
+    grep swap /etc/fstab || info "fstab에 swap 항목이 없습니다"
+    
+    complete_step 7 "Swap 비활성화"
+    return 0
+}
+
+# Step 8: 기존 컨테이너 런타임 제거
+step8_remove_old_runtime() {
+    start_step "기존 컨테이너 런타임 제거"
+    
+    # 제거할 패키지 목록
+    REMOVE_PKGS="docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine podman runc"
+    
+    for pkg in $REMOVE_PKGS; do
+        if rpm -q $pkg >/dev/null 2>&1; then
+            info "$pkg 제거 중..."
+            dnf remove -y $pkg
+        fi
+    done
+    
+    complete_step 8 "기존 컨테이너 런타임 제거"
+    return 0
+}
+
+# Step 9: Docker 및 Containerd 설치
+step9_install_docker() {
+    start_step "Docker 및 Containerd 설치"
+    
+    # Docker 및 Containerd 패키지 다운로드
+    info "Docker 및 Containerd 패키지 다운로드 중..."
+    
+    # Bundle 내 Docker 및 Containerd 경로 입력 받기
+    read -p "Docker 및 Containerd 패키지 설치 경로를 입력하세요. : " docker_pkg_path
+    
     # 패키지 설치
-    yum install -y kubelet kubeadm kubectl --disableexcludes=kubernetes || { error "Kubernetes 패키지 설치 실패"; return 1; }
+    info "Docker 및 Containerd 패키지 설치 중..."
+    dnf install -y ${docker_pkg_path}/*.rpm || { error "Docker 및 Containerd 설치 실패"; return 1; }
     
+    # Docker 서비스 시작 및 활성화
+    systemctl start docker
+    systemctl enable docker
+    
+    # Containerd 서비스 시작 및 활성화
+    systemctl start containerd
+    systemctl enable containerd
+    
+    # 서비스 상태 확인
+    info "서비스 상태 확인:"
+    systemctl is-enabled docker containerd
+    
+    complete_step 9 "Docker 및 Containerd 설치"
+    return 0
+}
+
+# Step 10: Containerd 설정
+step10_configure_containerd() {
+    start_step "Containerd 설정"
+    
+    # Containerd 기본 설정 생성
+    containerd config default | tee /etc/containerd/config.toml || { error "Containerd 설정 생성 실패"; return 1; }
+    
+    # SystemdCgroup 활성화
+    sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
+    
+    # 설정 확인
+    info "SystemdCgroup 설정 확인:"
+    grep 'SystemdCgroup' /etc/containerd/config.toml
+    
+    # SandBox Image version 변경 (3.8 -> 3.9)
+    sed -i 's/sandbox_image = "registry.k8s.io/pause:3.8"/sandbox_image = "registry.k8s.io/pause:3.9"' /etc/containerd/config.toml
+
+    # Containerd 재시작
+    systemctl restart containerd || { error "Containerd 재시작 실패"; return 1; }
+    
+    complete_step 10 "Containerd 설정"
+    return 0
+}
+
+
+
+# Step 11: Kubernetes 패키지 로컬 설치
+step11_install_kubernetes() {
+    start_step "Kubernetes 패키지 로컬 설치"
+    
+    # 쿠버네티스 패키지 로컬 설치
+    read -p "패키지 설정을 위해, Bundle 내 OS 버전에 맞는 k8s 패키지 경로를 입력하세요. : " k8s_pkg_path
+    dnf localinstall -y ${k8s_pkg_path}/*.rpm || { error "kubernetes 패키지 로컬 설치 실패"; return 1; }
+
     # kubelet 활성화
+    systemctl start kubelet
     systemctl enable kubelet
     
     info "설치된 Kubernetes 버전:"
     kubectl version --client
     kubeadm version
+    kubectl --version
     
-    complete_step 11 "Kubernetes 패키지 설치"
+    complete_step 11 "Kubernetes 패키지 로컬 설치"
     return 0
 }
 
