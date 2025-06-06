@@ -103,8 +103,9 @@ show_menu() {
     echo "8. 기존 컨테이너 런타임 제거"
     echo "9. Docker 및 Containerd 설치"
     echo "10. Containerd 설정"
-    echo "11. Kubernetes 패키지 설치"
-    echo "12. 최종 확인 및 완료"
+    echo "11. Kubernetes Docker 이미지 로드"
+    echo "12. Kubernetes 패키지 로컬 설치"
+    echo "13. 최종 확인 및 완료"
     info "===================================="
     echo ""
 }
@@ -357,6 +358,7 @@ step9_install_docker() {
     return 0
 }
 
+
 # Step 10: Containerd 설정
 step10_configure_containerd() {
     start_step "Containerd 설정"
@@ -381,10 +383,28 @@ step10_configure_containerd() {
     return 0
 }
 
+# Step 11 : Kubernetes Docker 이미지 로드
+step11_load_k8s_docker_images() {
+    start_setp "Kubernetes Docker 이미지 로드"
+    read -p "이미지 로드를 위해, Bundle 내 k8s 도커 이미지 파일 경로를 입력하세요. : " k8s_docker_image_path
+
+    echo ">>> Kubernetes Docker 이미지를 로드합니다..."
+    for img in "${k8s_docker_image_path}"/*.tar; do
+      ctr -n k8s.io image import "${img}" || { error "${img} 이미지 로드 실패"; return 1;}
+    done
+
+    echo ">>> 모든 Kubernetes Docker 이미지를 성공적으로 로드했습니다."
+    
+    # 이미지 확인
+    crictl images
+    
+    complete_step 11 "Kubernetes Docker 이미지 로드"
+    retrun 0
+}
 
 
-# Step 11: Kubernetes 패키지 로컬 설치
-step11_install_kubernetes() {
+# Step 12: Kubernetes 패키지 로컬 설치
+step12_local_install_kubernetes() {
     start_step "Kubernetes 패키지 로컬 설치"
     
     # 쿠버네티스 패키지 로컬 설치
@@ -400,12 +420,12 @@ step11_install_kubernetes() {
     kubeadm version
     kubectl --version
     
-    complete_step 11 "Kubernetes 패키지 로컬 설치"
+    complete_step 12 "Kubernetes 패키지 로컬 설치"
     return 0
 }
 
-# Step 12: 최종 확인
-step12_final_check() {
+# Step 13: 최종 확인
+step13_final_check() {
     start_step "최종 확인 및 완료"
     
     info "시스템 설정 최종 확인:"
@@ -421,12 +441,11 @@ step12_final_check() {
     echo ""
     
     success "모든 설정이 완료되었습니다!"
-    info "이제 마스터 노드에서 'kubeadm join' 명령을 실행하여 클러스터에 참여할 수 있습니다."
     
     # 상태 파일 제거 (모든 단계 완료)
     rm -f "${STATE_FILE}"
     
-    complete_step 12 "최종 확인 및 완료"
+    complete_step 13 "최종 확인 및 완료"
     return 0
 }
 
@@ -434,7 +453,7 @@ step12_final_check() {
 main() {
     clear
     echo "=================================================="
-    echo "   Kubernetes Worker Node Setup Script v1.0"
+    echo "   Kubernetes Offline Node Setup Script v1.0"
     echo "=================================================="
     
     # 시스템 정보 확인
@@ -484,16 +503,17 @@ main() {
     steps=(
         "step1_iso_repo"
         "step2_firewall_selinux"
-        "step3_hostname_hosts"
-        "step4_network_dns"
-        "step5_time_sync"
-        "step6_disable_swap"
-        "step7_remove_old_runtime"
-        "step8_install_docker"
-        "step9_configure_containerd"
-        "step10_kernel_settings"
-        "step11_install_kubernetes"
-        "step12_final_check"
+        "step3_kernel_settings"
+        "step4_hostname_hosts"
+        "step5_network_dns"
+        "step6_time_sync"
+        "step7_disable_swap"
+        "step8_remove_old_runtime"
+        "step9_install_docker"
+        "step10_configure_containerd"
+        "step11_load_k8s_docker_images"
+        "step12_localinstall_kubernetes"
+        "step13_final_check"
     )
     
     # 선택된 단계부터 실행
