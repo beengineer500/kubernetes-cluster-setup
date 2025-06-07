@@ -235,12 +235,14 @@ step4_load_calico_images() {
     retrun 0
 }
 
-# Step 5 : Calico 설정
-step5_configure_calico() {
-    start_step "Calico 설정"
-    read -p "Calico 설정을 위해, Bundle 내 calico.yaml 파일 경로를 입력하세요. : " calico_manifest_path
-
+# Step 5 : Calico mainfest 수정
+step5_modify_calico() {
+    start_step "Calico manifest 수정"
+    read -p "Calico manifest 수정을 위해, Bundle 내 calico.yaml 파일 경로를 입력하세요. (calico.yaml 포함) : " calico_manifest_file
     
+
+
+
 }
 
 
