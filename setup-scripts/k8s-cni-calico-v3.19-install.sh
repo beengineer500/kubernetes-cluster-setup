@@ -89,10 +89,33 @@ check_system_info() {
     echo ""
     echo "  IP 주소:"
     ip -4 addr show | grep inet | grep -v 127.0.0.1 | sed 's/^/    /'
-    
+
     # Kubernets 버전 확인
     info "\nKubernetes 도구 버전 (kubeadm, kubelet, kubectl):"
-    if command
+    if command -v kubeadm &> /dev/null; then
+        KUBERNETES_VERSION=$(kubeadm version -o short)
+        echo "  - kubeadm: $KUBERNETES_VERSION"
+    else
+        warning "kubeadm이 설치되지 않았습니다"
+    fi
+    
+    if command -v kubectl &> /dev/null; then
+        echo "  - kubectl: $(kubectl version --client --short 2>/dev/null || echo 'N/A')"
+    else
+        warning "kubectl이 설치되지 않았습니다"
+    fi
+    
+    if command -v kubelet &> /dev/null; then
+        echo "  - kubelet: $(kubelet --version)"
+    else
+        warning "kubelet이 설치되지 않았습니다"
+    fi
+
+        # Calico 호환성 정보
+    info "\nCalico CNI 호환성 정보:"
+    echo "  - 설치 예정 Calico 버전: $CALICO_VERSION"
+    echo "  - Pod CIDR: $POD_CIDR"
+    echo "  - Kubernetes $KUBERNETES_VERSION 와 Calico $CALICO_VERSION 호환성 확인 필요"
     
     info "======================================"
     echo ""
@@ -128,23 +151,96 @@ get_current_step() {
     fi
 }
 
-# Step 11 : Kubernetes Docker 이미지 로드
-step11_load_k8s_docker_images() {
-    start_setp "Kubernetes Docker 이미지 로드"
-    read -p "이미지 로드를 위해, Bundle 내 k8s 도커 이미지 파일 경로를 입력하세요. : " k8s_docker_image_path
+# Step 1 : 사전 요구사항 확인
+step1_prerequisites() {
+    start_step "사전 요구사항 확인"
 
-    echo ">>> Kubernetes Docker 이미지를 로드합니다..."
-    for img in "${k8s_docker_image_path}"/*.tar; do
+    # swap 비활성화 확인
+    if [[ $(swapon -s | wc -l) -gt 0 ]]; then
+        warning "swap이 활성화 돼있습니다. 비활성화가 필요합니다."
+        return 1
+    fi
+    success "Swap 비활성화 확인"
+
+    # 필수 커널 모듈 확인
+    local modules=("overlay" "br_netfilter")
+    for module in "${modules[@]}"; do
+        if ! lsmod | grep -q "^$module"; then
+            waring "커널 모듈 $module 이 로드되지 않았습니다."
+            execute_command "modprobe $module" "커널 모듈 $module 로드"
+        fi
+    done
+    success "필수 커널 모듈 확인"
+
+    # sysctl 설정 확인
+    if [[ ! -f /etc/sysctl.d/k8s.conf ]]; then
+        cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward = 1
+EOF
+        execute_command "sysctl --system" "sysctl 설정 적용" || return 1
+    fi
+    success "sysctl 설정 확인"
+
+    complete_step 1 "사전 요구사항 확인"
+    retunr 0
+}
+
+# Step 2 : 컨테이너 런타임 확인
+step2_container_runtime() {
+    start_step "Container Runtime 확인"
+
+    # containerd, docker 확인
+    if systemctl is-active containerd &> /dev/null; then
+        success "containerd 가 실행 중입니다."
+    elif systemctl is-active docker &> /dev/null; then
+        success "docker 가 실행 중입니다."
+    else
+        error "Container Runtime이 실행 상태가 아닙니다."
+        return 1
+    fi
+
+    complete_step 2 "Container Runtime 확인"
+    return 0
+}
+
+# Step 3 : 클러스터 확인
+step3_cluster() {
+    start_step "Kubernetes 클러스터 상태 확인"
+
+    kubectl get nodes || { error "쿠버네티스 클러스터를 확인하세요."; return 1; }
+    
+    complete_step 3 "Kubernetes 클러스터 상태 확인"
+    return 0
+}
+
+
+# Step 4 : Calico 이미지 로드
+step4_load_calico_images() {
+    start_step "Calico 이미지 로드"
+    read -p "이미지 로드를 위해, Bundle 내 Caclico 도커 이미지 파일 경로를 입력하세요. : " calico_docker_image_path
+
+    echo ">>> Calico Docker 이미지를 로드합니다..."
+    for img in "${calico_docker_image_path}"/*.tar; do
       ctr -n k8s.io image import "${img}" || { error "${img} 이미지 로드 실패"; return 1;}
     done
 
-    echo ">>> 모든 Kubernetes Docker 이미지를 성공적으로 로드했습니다."
+    echo ">>> 모든 Calco 도커 이미지를 성공적으로 로드했습니다."
     
     # 이미지 확인
     crictl images
     
-    complete_step 11 "Kubernetes Docker 이미지 로드"
+    complete_step 4 "Calico 이미지 로드"
     retrun 0
+}
+
+# Step 5 : Calico 설정
+step5_configure_calico() {
+    start_step "Calico 설정"
+    read -p "Calico 설정을 위해, Bundle 내 calico.yaml 파일 경로를 입력하세요. : " calico_manifest_path
+
+    
 }
 
 
