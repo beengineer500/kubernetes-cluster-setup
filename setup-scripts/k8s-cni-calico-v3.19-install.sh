@@ -240,6 +240,18 @@ step5_modify_calico() {
     start_step "Calico manifest 수정"
     read -p "Calico manifest 수정을 위해, Bundle 내 calico.yaml 파일 경로를 입력하세요. (calico.yaml 포함) : " calico_manifest_file
     
+    if [[ ! -f "$calico_manifest_file" ]]; then
+        error "calico.yaml 파일이 존재하지 않습니다."
+        return 1
+    fi
+
+    # 백업 생성
+    cp "$calico_manifest_file" "${calico_manifest_file}.bk"
+    info "백업 파일 생성: ${calico_manifest_file}.bk"
+
+    # CALICO_IPV4POOL_CIDR 수정
+    info "calico.yaml 내 Pod CIDR 설정 수정 중..."
+    
 
 
 
