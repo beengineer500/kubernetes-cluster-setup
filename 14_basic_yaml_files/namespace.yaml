@@ -1,0 +1,6 @@
+# 네임스페이스 단위로 리소스 분리 및 관리
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: my-namespace

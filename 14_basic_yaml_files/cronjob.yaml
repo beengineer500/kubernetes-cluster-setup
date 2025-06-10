@@ -1,0 +1,17 @@
+# 스케쥴 기반 작업 자동 실행
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: my-CronJob
+spec:
+  schedule: "0 0 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: my-cronjob
+            image: busybox
+            command: ["date"]
+          restartPolicy: OnFailure

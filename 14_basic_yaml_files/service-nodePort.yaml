@@ -1,0 +1,17 @@
+# NodePort를 사용하여, 클러스터 외부에서 접근 가능한 서비스
+# 클러스터 내 모든 노드에서 지정 포트를 Open&Listne
+# 해당 포트로 트래픽이 들어오면 서비스로 Routing
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nodeport-service
+spec:
+  selector:
+    app: my-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+    nodePort: 30007
+    type: NodePort

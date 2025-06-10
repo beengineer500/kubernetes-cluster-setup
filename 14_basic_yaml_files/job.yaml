@@ -1,0 +1,14 @@
+# 일회성 작업 실행을 위한 Job
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-Job
+spec:
+  template:
+    spec:
+      containers:
+      - name: my-Job
+        image: bushbox
+        command: ["echo", "Hello, Kubernetes!"]
+      restartPolicy: Never

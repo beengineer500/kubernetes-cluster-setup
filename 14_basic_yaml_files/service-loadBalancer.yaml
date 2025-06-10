@@ -1,0 +1,15 @@
+# 클라우드 환경에서 외부 로드밸런서 프로비저닝
+# 외부 IP를 통해 서비스 노출
+
+apiVerion: v1
+kind: Service
+metadata:
+  name: my-loadbalancer-service
+spec:
+  selector:
+    app: my-app
+    ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      type: LoadBalancer

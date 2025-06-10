@@ -1,0 +1,13 @@
+# 클러스터 내 영구 스토리지 리소스 정의
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: my-pv
+spec:
+  capacity:
+    storage: 1Gi
+    accessModes:
+    - ReadWriteOnce 
+    hostPath:
+      path: /mnt/data

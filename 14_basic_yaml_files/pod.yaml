@@ -1,0 +1,12 @@
+# 가장 최소한의 Pod 정의 예시
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-Pod
+spec:
+  containers:
+  - name: my-container
+    image: nginx:alpine
+    ports:
+    - containerPort: 80

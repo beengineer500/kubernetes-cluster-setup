@@ -1,0 +1,21 @@
+# Horizontal Pod Autoscaler
+# CPU 사용률 기준으로 pod 수 자동 조절
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-hpa
+spec:
+  scaleTargerRef:
+    apiVersion: apps/v1
+    kind: Depolyment
+    name: my-deployment
+    minReplicas: 2
+    maxReplicas: 10
+    metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
