@@ -27,10 +27,14 @@
   3. OS 설정
   4. Kubernetes Cluster - Online 구축
 <br>
+
 ### [2025-6-2] ~ [2025-6-8]
   1. Kubernetes Cluster - Offline 구축
 <br>
+
 ### [2025-6-10] ~ 
   1. Test Server CPU 장착 (NVIDIA Tesla V100 PCIe * 1)
   2. NVIDIA Driver, CUDA toolkit 호환성 및 버전 확인, 설치
   3. k8s-gpu-worker 노드 구성 및 클러스터 join
+<br>
+<br>
