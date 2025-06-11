@@ -21,20 +21,21 @@
 <br>
 
 ## Log
-### [2025-5-27] ~ [2025-6-1]
+### [2025-5-27 ~ 2025-6-1]
   1. Hypervisor 설치 (VMware EXSi, VirtualBox)
   2. VM 생성/설정 & OS 설치
   3. OS 설정
   4. Kubernetes Cluster - Online 구축
 <br>
 
-### [2025-6-2] ~ [2025-6-8]
+### [2025-6-2 ~ 2025-6-8]
   1. Kubernetes Cluster - Offline 구축
 <br>
 
-### [2025-6-10] ~ 
+### [2025-6-10 ~ ]
   1. Test Server CPU 장착 (NVIDIA Tesla V100 PCIe * 1)
   2. NVIDIA Driver, CUDA toolkit 호환성 및 버전 확인, 설치
   3. k8s-gpu-worker 노드 구성 및 클러스터 join
+  4. (ing) NVIDIA Container toolkit 호환성 및 버전 확인, 설치 
 <br>
 <br>
