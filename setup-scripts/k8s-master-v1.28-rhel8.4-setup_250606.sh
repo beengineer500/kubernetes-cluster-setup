@@ -234,7 +234,7 @@ step5_time_sync() {
     start_step "시간 동기화 확인"
     
     # chronyd 설치 확인
-    if ! rpm -q chrony > /dev/null 2>&1: then
+    if ! rpm -q chrony > /dev/null 2>&1; then
         info 'chrony 패키지가 설치되어 있지 않습니다. 설치를 시작합니다...'
         dnf install -y chrony || { error "chrony 설치 실패"; return 1; }
     else
