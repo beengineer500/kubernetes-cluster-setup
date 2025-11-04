@@ -66,10 +66,6 @@ check_system_info() {
     # OS 정보
     info "OS 정보:"
     cat /etc/os-release | grep -E "^(NAME|VERSION)" | sed 's/^/  /'
-
-    # Kernel 정보
-    info "Kernel 정보 : "
-    uname -r 
     
     # 하드웨어 정보
     info "하드웨어 정보:"
@@ -199,8 +195,8 @@ step3_hostname_hosts() {
     
     # hosts 파일 설정
     # 기존 항목 확인 후 추가
-    grep -q "k8s-master01" /etc/hosts || echo "192.168.0.100 k8s-master01" >> /etc/hosts
-    grep -q "k8s-worker01" /etc/hosts || echo "192.168.0.200 k8s-worker01" >> /etc/hosts
+    grep -q "k8s-master01" /etc/hosts || echo "192.168.35.70 k8s-master01" >> /etc/hosts
+    grep -q "k8s-worker01" /etc/hosts || echo "192.168.35.75 k8s-worker01" >> /etc/hosts
     
     info "hosts 파일 내용:"
     cat /etc/hosts | grep -E "(k8s-master|k8s-worker)"
@@ -400,10 +396,10 @@ step11_install_kubernetes() {
     cat <<EOF | tee /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
-baseurl=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/
+baseurl=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/
 enabled=1
 gpgcheck=1
-gpgkey=https://pkgs.k8s.io/core:/stable:/v1.30/rpm/repodata/repomd.xml.key
+gpgkey=https://pkgs.k8s.io/core:/stable:/v1.28/rpm/repodata/repomd.xml.key
 exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
 EOF
 

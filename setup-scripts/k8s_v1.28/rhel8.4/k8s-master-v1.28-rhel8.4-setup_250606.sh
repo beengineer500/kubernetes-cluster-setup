@@ -3,12 +3,9 @@
 #==============================================================================
 # Kubernetes Worker Node Setup Script
 # Description: 쿠버네티스 워커 노드 환경을 자동으로 구성하는 스크립트
-# Author: Beengineer
+# Author: DevOps Engineer
 # Version: 1.0
 #==============================================================================
-
-# Windows에서 편집했을 경우, 줄바꿈 기호가 Linux와 상이 => 변경
-sed -i 's/\r$//' k8s-multi-master-v1.28-rhel8.4-setup_250612.sh
 
 # 색상 정의
 RED='\033[0;31m'
@@ -237,7 +234,7 @@ step5_time_sync() {
     start_step "시간 동기화 확인"
     
     # chronyd 설치 확인
-    if ! rpm -q chrony > /dev/null 2>&1; then
+    if ! rpm -q chrony > /dev/null 2>&1: then
         info 'chrony 패키지가 설치되어 있지 않습니다. 설치를 시작합니다...'
         dnf install -y chrony || { error "chrony 설치 실패"; return 1; }
     else
