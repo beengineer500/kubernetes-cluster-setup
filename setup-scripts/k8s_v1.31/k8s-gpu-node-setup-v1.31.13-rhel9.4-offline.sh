@@ -253,26 +253,26 @@ echo "===== 15) Done ====="
 echo
 echo
 
-# echo "16) Configure containerd config about certs & registry(harbor)"
+echo "16) Configure containerd config about certs & registry(harbor)"
 # !!!!!!!!!!!!!!!! Need to edit !!!!!!!!!!!!!!!!
 # sudo mkdir -p /etc/containerd/certs.d
 # sudo sed -i 's@config_path = ""@config_path = "/etc/containerd/certs.d"@g' /etc/containerd/config.toml
-# sudo sed -i 's@sandbox_image = "registry.k8s.io/pause:3.8"@sandbox_image = "harbor.distributed.tp.violet.uplus.co.kr/registry.k8s.io/pause:3.10"@g' /etc/containerd/config.toml
-# sudo mkdir -p /etc/containerd/certs.d/harbor.distributed.tp.violet.uplus.co.kr
-# cat <<EOF | sudo tee /etc/containerd/certs.d/harbor.distributed.tp.violet.uplus.co.kr/hosts.toml
-# server = "http://harbor.distributed.tp.violet.uplus.co.kr"
+# sudo sed -i 's@sandbox_image = "registry.k8s.io/pause:3.8"@sandbox_image = "harbor.co.kr/registry.k8s.io/pause:3.10"@g' /etc/containerd/config.toml
+# sudo mkdir -p /etc/containerd/certs.d/harbor.co.kr
+# cat <<EOF | sudo tee /etc/containerd/certs.d/harbor.co.kr/hosts.toml
+# server = "http://harborco.kr"
 
-# [host."http://harbor.distributed.tp.violet.uplus.co.kr"]
+# [host."http://harbor.co.kr"]
 #   capabilities = ["pull", "resolve", "push"]
 #   skip_verify = true
 
-#   [host."http://harbor.distributed.tp.violet.uplus.co.kr".auth]
+#   [host."http://harbor..co.kr".auth]
 #     username = ""
 #     password = ""
 # EOF
 # cat <<EOF | sudo tee /etc/docker/daemon.json
 # {
-#     "insecure-registries" : ["harbor.distributed.tp.violet.uplus.co.kr"]
+#     "insecure-registries" : ["harbor.co.kr"]
 # }
 # EOF
 

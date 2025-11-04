@@ -1,20 +1,9 @@
 #!/bin/bash
-
 set -eou pipefail
-
-  
 
 echo '#===================================================#'
 echo '# This is shellscript for k8s-master-node @Online #'
-echo '#===================================================#'
-
-
-# 1) firewalld stop&disable
-# 2) selinux disable
-# 3) swap off
-# 4) hostname, /etc/hosts, /etc/resolv.conf
-# 5) kernel
-  
+echo '#===================================================#'  
 
 echo "1) Disable firewalld"
 sudo systemctl disable --now firewalld
@@ -30,12 +19,13 @@ echo "===== 2) Done ====="
 echo
 echo
 
-echo "3) Swap off"
-sudo swapoff -a
-sudo sed -i "@swap@s/^/#@" /etc/fstab
-echo "===== 3) Done ====="
-echo
-echo
+
+# echo "3) Swap off"
+# sudo swapoff -a
+# sudo sed -i "@swap@s/^/#@" /etc/fstab
+# echo "===== 3) Done ====="
+# echo
+# echo
 
 
 echo "4) Configure Hostname"
@@ -47,56 +37,30 @@ echo
 echo
 
 
-# !!!!!!!!! Need to edit !!!!!!!!!!!
-# echo "5) Configure /etc/hosts"
-# cat <<EOF | sudo tee /etc/hosts
-# cluster-endpoint XXX.XXX.XXX.XXX
+echo "5) Configure /etc/hosts"
+cat <<EOF | sudo tee /etc/hosts
+# XXX.XXX.XXX.XXX cluster-endpoint
 #  
-# XXX.XXX.XXX.XXX h100-master01
-# XXX.XXX.XXX.XXX h100-master02
-# XXX.XXX.XXX.XXX h100-master03
+# XXX.XXX.XXX.XXX k8s-master01
+# XXX.XXX.XXX.XXX k8s-master02
+# XXX.XXX.XXX.XXX k8s-master03
 #
 # XXX.XXX.XXX.XXX h200-001
 # XXX.XXX.XXX.XXX h200-002
 # XXX.XXX.XXX.XXX h200-003
-# XXX.XXX.XXX.XXX h200-004
-# XXX.XXX.XXX.XXX h200-005
-# XXX.XXX.XXX.XXX h200-006
-# XXX.XXX.XXX.XXX h200-007
-# XXX.XXX.XXX.XXX h200-008
-# XXX.XXX.XXX.XXX h200-009
-# XXX.XXX.XXX.XXX h200-010
-# XXX.XXX.XXX.XXX h200-011
-# XXX.XXX.XXX.XXX h200-012
-# XXX.XXX.XXX.XXX h200-013
-# XXX.XXX.XXX.XXX h200-014
-# XXX.XXX.XXX.XXX h200-015
-# XXX.XXX.XXX.XXX h200-016
-# XXX.XXX.XXX.XXX h200-017
-# XXX.XXX.XXX.XXX h200-018
-# XXX.XXX.XXX.XXX h200-019
-# XXX.XXX.XXX.XXX h200-020
-# XXX.XXX.XXX.XXX h200-021
-# XXX.XXX.XXX.XXX h200-022
-# XXX.XXX.XXX.XXX h200-023
-# XXX.XXX.XXX.XXX h200-024
-# XXX.XXX.XXX.XXX h200-025
-# XXX.XXX.XXX.XXX h200-026
-# XXX.XXX.XXX.XXX h200-027
-# XXX.XXX.XXX.XXX h200-028
-# EOF
-# echo "===== 5) Done ====="
-# echo
-# echo
+EOF
+echo "===== 5) Done ====="
+echo
+echo
 
-# !!!!!!!!! Need to edit !!!!!!!!!!!
-# echo "6) Configure /etc/resolv.conf"
-# cat <<EOF | sudo tee /etc/resolv.conf
-# nameserver XXX.XXX.XXX.XXX
-# EOF
-# echo "===== 6) Done ====="
-# echo
-# echo
+
+echo "6) Configure /etc/resolv.conf"
+cat <<EOF | sudo tee /etc/resolv.conf
+nameserver 168.126.63.2
+EOF
+echo "===== 6) Done ====="
+echo
+echo
 
 echo "7) Configure sysctl parameters"
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
@@ -145,18 +109,18 @@ echo
 
 
 echo "10) Download Packages from RHEL 9.4"
+sudo dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && sleep 1 && dnf list &> /dev/null;
 sudo dnf install -y net-tools \
 wget \
 traceroute \
 iproute \
-iproute2 \
 iperf3 \
 ipmitool \
 nano \
 vim \
 python3 \
-jq
-sleep 1;
+jq \
+dnf-dnf-plugins-core && sleep 1;
 echo "===== 10) Done ====="
 echo
 echo
@@ -174,9 +138,9 @@ wget -P /root/containerd-docker-pkgs https://download.docker.com/linux/rhel/9/x8
 sudo dnf install -y /root/containerd-docker-pkgs/*.rpm
 sleep 1;
 echo "Enable containerd & Docker"
-sudo systemctl enable --now containerd
-sudo systemctl enable --now docker
-sleep 1;
+sudo systemctl enable --now containerd \
+&& sudo systemctl enable --now docker \
+&& sleep 1;
 echo "===== 11) Done ====="
 echo
 echo
@@ -191,31 +155,27 @@ gpgcheck=1
 gpgkey=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/repodata/repomd.xml.key
 exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
 EOF
-sudo dnf repolist
-sudo dnf list &> /dev/null
+sudo dnf repolist \
+&& sudo dnf list &> /dev/null;
 echo "===== 10) Done ====="
 echo
 echo
 
 
 echo "12) Download Kubernetes Packages"
-sudo dnf install -y --disableexcludes=kubernetes --downloadonly kubeadm-1.31.13 \
+sudo mkdir -p /k8s-pkgs
+sudo dnf install -y --disableexcludes=kubernetes --downloadonly --downloaddir=/root/k8s-pkgs kubeadm-1.31.13 \
 kubelet-1.31.13 \
 kubectl-1.31.13 \
 cri-tools-1.31.1 \
-kubernetes-cni-1.5.1
-sleep 1;
+kubernetes-cni-1.5.1 && sleep 1;
 echo "===== 12) Done ====="
 echo
 echo
 
 
 echo "13) Install Kubernetes packages"
-sudo dnf install -y /var/cache/dnf/*/*/packages/kubeadm-1.31.13*.rpm \
-/var/cache/dnf/*/*/packages/kubelet-1.31.13*.rpm \
-/var/cache/dnf/*/*/packages/kubectl-1.31.13*.rpm \
-/var/cache/dnf/*/*/packages/cri-tools-1.31.1*.rpm \
-/var/cache/dnf/*/*/packages/kubernetes-cni-1.5.1*.rpm
+sudo dnf install -y /root/k8s-pkgs/*.rpm
 echo "===== 13) Done ====="
 echo
 echo
@@ -261,22 +221,22 @@ echo "16) Configure containerd config about certs & registry(harbor)"
 # !!!!!!!!!!!!!!!! Need to edit !!!!!!!!!!!!!!!!
 # sudo mkdir -p /etc/containerd/certs.d
 # sudo sed -i 's@config_path = ""@config_path = "/etc/containerd/certs.d"@g' /etc/containerd/config.toml
-# sudo sed -i 's@sandbox_image = "registry.k8s.io/pause:3.8"@sandbox_image = "harbor.distributed.tp.violet.uplus.co.kr/registry.k8s.io/pause:3.10"@g' /etc/containerd/config.toml
-# sudo mkdir -p /etc/containerd/certs.d/harbor.distributed.tp.violet.uplus.co.kr
-# cat <<EOF | sudo tee /etc/containerd/certs.d/harbor.distributed.tp.violet.uplus.co.kr/hosts.toml
-# server = "http://harbor.distributed.tp.violet.uplus.co.kr"
+# sudo sed -i 's@sandbox_image = "registry.k8s.io/pause:3.8"@sandbox_image = "harbor.co.kr/registry.k8s.io/pause:3.10"@g' /etc/containerd/config.toml
+# sudo mkdir -p /etc/containerd/certs.d/harbor.co.kr
+# cat <<EOF | sudo tee /etc/containerd/certs.d/harbor.co.kr/hosts.toml
+# server = "http://harborco.kr"
 
-# [host."http://harbor.distributed.tp.violet.uplus.co.kr"]
+# [host."http://harbor.co.kr"]
 #   capabilities = ["pull", "resolve", "push"]
 #   skip_verify = true
 
-#   [host."http://harbor.distributed.tp.violet.uplus.co.kr".auth]
+#   [host."http://harbor..co.kr".auth]
 #     username = ""
 #     password = ""
 # EOF
 # cat <<EOF | sudo tee /etc/docker/daemon.json
 # {
-#     "insecure-registries" : ["harbor.distributed.tp.violet.uplus.co.kr"]
+#     "insecure-registries" : ["harbor.co.kr"]
 # }
 # EOF
 
@@ -295,20 +255,20 @@ echo
 echo
 
 
-echo "18) Initiating Kubernetes Cluster"
-echo 'Type pod-network-cidr you want to use (e.g. 10.250.0.0/16)'
-read POD_NETWORK_CIDR
-echo 'Type image-repository <IP or DomainName> you want to use (e.g. harbor/registry.k8s.io)'
-read IMAGE_REPO
-sudo kubeadm init --control-plane-endpoint="cluster-endpoint:6443" \
---upload-certs \
---pod-network-cidr=${POD_NETWORK_CIDR} \
---service-cidr=10.96.0.0/12 \
---kubernetes-version=1.31.13 \
---image-repository=${IMAGE_REPO} && sleep 1;
-echo "===== 16) Done ====="
-echo
-echo
+# echo "18) Initiating Kubernetes Cluster"
+# echo 'Type pod-network-cidr you want to use (e.g. 10.250.0.0/16)'
+# read POD_NETWORK_CIDR
+# echo 'Type image-repository <IP or DomainName> you want to use (e.g. harbor/registry.k8s.io)'
+# read IMAGE_REPO
+# sudo kubeadm init --control-plane-endpoint="cluster-endpoint:6443" \
+# --upload-certs \
+# --pod-network-cidr=${POD_NETWORK_CIDR} \
+# --service-cidr=10.96.0.0/12 \
+# --kubernetes-version=1.31.13 \
+# --image-repository=${IMAGE_REPO} && sleep 1;
+# echo "===== 16) Done ====="
+# echo
+# echo
 
 
 exit 1;
