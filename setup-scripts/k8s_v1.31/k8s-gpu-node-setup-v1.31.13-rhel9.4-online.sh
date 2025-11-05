@@ -145,14 +145,16 @@ echo "===== 11) Done ====="
 echo
 echo
   
-echo "12) ADD Repository for Kubernetes v1.31"
+echo "12) ADD Repository for Kubernetes"
+echo "Type k8s version you want to use (e.g. 1.31)"
+read K8S_VERSION
 cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo
 [kubernetes]
 name=Kubernetes
-baseurl=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/
+baseurl=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/
 enabled=1
 gpgcheck=1
-gpgkey=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/repodata/repomd.xml.key
+gpgkey=https://pkgs.k8s.io/core:/stable:/v${K8S_VERSION}/rpm/repodata/repomd.xml.key
 exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
 EOF
 sudo dnf repolist \
@@ -162,20 +164,21 @@ echo
 echo
 
 
-echo "12) Download Kubernetes Packages"
-sudo mkdir -p /k8s-pkgs
-sudo dnf install -y --disableexcludes=kubernetes --downloadonly --downloaddir=/root/k8s-pkgs kubeadm-1.31.13 \
-kubelet-1.31.13 \
-kubectl-1.31.13 \
-cri-tools-1.31.1 \
-kubernetes-cni-1.5.1 && sleep 1;
+echo "12) Download k8s-${K8S_VERSION} (latest) Packages"
+sudo mkdir -p /root/k8s-pkgs
+sudo dnf install -y --disableexcludes=kubernetes --downloadonly --downloaddir=/root/k8s-pkgs kubeadm \
+kubelet \
+kubectl \
+cri-tools \
+kubernetes-cni && sleep 1;
 echo "===== 12) Done ====="
 echo
 echo
 
 
 echo "13) Install Kubernetes packages"
-sudo dnf install -y /root/k8s-pkgs/*.rpm
+sudo dnf install -y /root/k8s-pkgs/*.rpm && sleep 1;
+systemctl enable --now kubelet
 echo "===== 13) Done ====="
 echo
 echo
@@ -250,10 +253,49 @@ echo "17) Configure k8s GPU node"
 sudo nvidia-ctk runtime configure --runtime=containerd
 sudo sed -i 's/default_runtime_name = "runc"/default_runtime_name = "nvidia"/g' /etc/containerd/config.toml
 sudo systemctl daemon-realod && sudo systemctl restart containerd
-echo "===== 16) Done ====="
+echo "===== 17) Done ====="
 echo
 echo
 
+echo "18) Download k8s-v${K8s_VERSION} component container image"
+sudo mkdir -p /root/k8s-images
+for image in \
+  registry.k8s.io/kube-apiserver:v1.31.13 \
+  registry.k8s.io/kube-controller-manager:v1.31.13 \
+  registry.k8s.io/kube-scheduler:v1.31.13 \
+  registry.k8s.io/kube-proxy:v1.31.13 \
+  registry.k8s.io/pause:3.10 \
+  registry.k8s.io/etcd:3.5.21-0 \
+  registry.k8s.io/coredns/coredns:v1.11.3; do
+  sudo docker pull $image
+done
+sleep 1;
+echo "===== 18) Done ====="
+echo
+echo
+
+echo "19) Convert k8s-v${K8s_VERSION} component container images to tar"
+sudo docker save \
+  registry.k8s.io/kube-apiserver:v1.31.13 \
+  registry.k8s.io/kube-controller-manager:v1.31.13 \
+  registry.k8s.io/kube-scheduler:v1.31.13 \
+  registry.k8s.io/kube-proxy:v1.31.13 \
+  registry.k8s.io/pause:3.10 \
+  registry.k8s.io/etcd:3.5.21-0 \
+  registry.k8s.io/coredns/coredns:v1.11.3 \
+  > /root/k8s-images/k8s-v1.31.13-images.tar
+echo "===== 19) Done ====="
+echo
+echo
+
+echo "20) Load container images to containerd"
+# (Docker) sudo docker load < k8s-v1.31.13-images.tar # if you use docker
+sudo ctr -n k8s.io images import /root/k8s-images/k8s-v1.31.13-images.tar \
+&& echo "check images" \
+&& sudo ctr -n k8s.io images ls | egrep "1.31.13|pause|etcd|coredns"
+echo "===== 20) Done ====="
+echo
+echo
 
 # echo "18) Initiating Kubernetes Cluster"
 # echo 'Type pod-network-cidr you want to use (e.g. 10.250.0.0/16)'
