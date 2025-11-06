@@ -185,13 +185,7 @@ echo
 
 
 echo "14) Unlimit container's resources"
-cat <<EOF | sudo tee /etc/systemd/system/containerd.service.d/override.conf
-[Service]
-LimitNPROC=infinity
-LimitCORE=infinity
-LimitNOFILE=infinity
-LimitMEMLOCK=infinity
-EOF
+sed -i '@^LimitNOFILE=infinity@a LimitMEMLOCK=infinity' /usr/lib/systemd/system/containerd.service
 sudo systemctl daemon-reload && sudo systemctl restart 
 echo "===== 14) Done ====="
 echo
@@ -211,6 +205,9 @@ sudo mkdir -p /etc/containerd && containerd config default | sudo tee /etc/conta
 
 # modify containerd config
 sudo sed -i 's@SystemdCgroup = false@SystemdCgroup = true@g' /etc/containerd/config.toml
+# ----- if local-install ----- # 
+sudo sed -i 's@sandbox_image = "registry.k8s.io/pause:3.8"@sandbox_image = "registry.k8s.io/pause:3.10"' 
+# ------------------------------
 sudo sed -i 's@root = "/var/lib/containerd"@root = "/data/containerd/var/lib/containerd"@g' /etc/containerd/config.toml
 sudo sed -i 's@state = "/run/containerd"@state = "/data/containerd/run/containerd"@g' /etc/containerd/config.toml
 sudo sed -i 's@ExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock@ExecStart=/usr/bin/dockerd -H fd:// --containerd=/data/containerd/run/containerd/containerd.sock --data-root=/data/docker/var/lib/docker --exec-root=/data/docker/run/docker@g' /usr/lib/systemd/system/docker.service
@@ -288,7 +285,7 @@ echo "===== 19) Done ====="
 echo
 echo
 
-echo "20) Load container images to containerd"
+echo "20) Load container images to containerd from tarball"
 # (Docker) sudo docker load < k8s-v1.31.13-images.tar # if you use docker
 sudo ctr -n k8s.io images import /root/k8s-images/k8s-v1.31.13-images.tar \
 && echo "check images" \

@@ -244,16 +244,18 @@ sudo mkdir -p /etc/containerd && containerd config default | sudo tee /etc/conta
 
 # modify containerd config
 sudo sed -i 's@SystemdCgroup = false@SystemdCgroup = true@g' /etc/containerd/config.toml
+# ----- if local-install ----- # 
+sudo sed -i 's@sandbox_image = "registry.k8s.io/pause:3.8"@sandbox_image = "registry.k8s.io/pause:3.10"' 
+# ------------------------------
 sudo sed -i 's@root = "/var/lib/containerd"@root = "/data/containerd/var/lib/containerd"@g' /etc/containerd/config.toml
 sudo sed -i 's@state = "/run/containerd"@state = "/data/containerd/run/containerd"@g' /etc/containerd/config.toml
 sudo sed -i 's@ExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock@ExecStart=/usr/bin/dockerd -H fd:// --containerd=/data/containerd/run/containerd/containerd.sock --data-root=/data/docker/var/lib/docker --exec-root=/data/docker/run/docker@g' /usr/lib/systemd/system/docker.service
-
 sudo systemctl daemon-realod && sudo systemctl restart containerd
 echo "===== 15) Done ====="
 echo
 echo
 
-echo "16) Configure containerd config about certs & registry(harbor)"
+# echo "16) Configure containerd config about certs & registry(harbor)"
 # !!!!!!!!!!!!!!!! Need to edit !!!!!!!!!!!!!!!!
 # sudo mkdir -p /etc/containerd/certs.d
 # sudo sed -i 's@config_path = ""@config_path = "/etc/containerd/certs.d"@g' /etc/containerd/config.toml
@@ -276,22 +278,34 @@ echo "16) Configure containerd config about certs & registry(harbor)"
 # }
 # EOF
 
-sudo systemctl daemon-realod && sudo systemctl restart containerd
-echo "===== 16) Done ====="
-echo
-echo
-
-
-# echo "17) Configure k8s GPU node"
-# sudo nvidia-ctk runtime configure --runtime=containerd
-# sudo sed -i 's@default_runtime_name = "runc"@default_runtime_name = "nvidia"@g' /etc/containerd/config.toml
 # sudo systemctl daemon-realod && sudo systemctl restart containerd
-# echo "===== 17) Done ====="
+# echo "===== 16) Done ====="
 # echo
 # echo
 
 
-# echo "18) Initiating Kubernetes Cluster"
+
+echo "17) Configure k8s GPU node"
+sudo nvidia-ctk runtime configure --runtime=containerd
+sudo sed -i 's@default_runtime_name = "runc"@default_runtime_name = "nvidia"@g' /etc/containerd/config.toml
+sudo systemctl daemon-realod && sudo systemctl restart containerd
+echo "===== 17) Done ====="
+echo
+echo
+
+
+echo "18) Load container images to containerd from tarball"
+# (Docker) sudo docker load < k8s-v1.31.13-images.tar # if you use docker
+sudo ctr -n k8s.io images import /root/k8s-images/k8s-v1.31.13-images.tar \
+&& echo "check images" \
+&& sudo ctr -n k8s.io images ls | egrep "1.31.13|pause|etcd|coredns"
+echo "===== 18) Done ====="
+echo
+echo
+
+
+
+# echo "19) Initiating Kubernetes Cluster"
 # echo 'Type pod-network-cidr you want to use (e.g. 10.250.0.0/16)'
 # read POD_NETWORK_CIDR
 # echo 'Type image-repository <IP or DomainName> you want to use (e.g. harbor/registry.k8s.io)'
